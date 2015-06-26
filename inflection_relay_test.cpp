@@ -12,6 +12,7 @@
 ||
 || @changelog
 || | 0.1 2015-06-25 - Danne Stayskal : Initial Prototype
+|| | 0.2 2015-06-25 - Danne Stayskal : Coordinating relays with Critical build
 || #
 ||
 */
@@ -62,29 +63,9 @@ void loop() {
     digitalWrite(RELAY_CH3_PIN, LOW);
     digitalWrite(RELAY_CH4_PIN, HIGH);
   }
-  
-  if(i == 5) {
-    digitalWrite(RELAY_CH4_PIN, LOW);
-    digitalWrite(RELAY_CH5_PIN, HIGH);
-  }
-  
-  if(i == 6) {
-    digitalWrite(RELAY_CH5_PIN, LOW);
-    digitalWrite(RELAY_CH6_PIN, HIGH);
-  }
-  
-  if(i == 7) {
-    digitalWrite(RELAY_CH6_PIN, LOW);
-    digitalWrite(RELAY_CH7_PIN, HIGH);
-  }
-  
-  if(i == 8) {
-    digitalWrite(RELAY_CH7_PIN, LOW);
-    digitalWrite(RELAY_CH8_PIN, HIGH);
-  }
 
   i = i + 1;
-  if (i == 9) {
+  if (i == 5) {
     i = 0;
   }
   

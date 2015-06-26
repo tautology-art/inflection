@@ -11,8 +11,9 @@
 || #
 ||
 || @changelog
-|| | 0.1 2015-06-18 - Danne Stayskal : Initial Prototype
-|| | 0.2 2015-06-25 - Danne Stayskal : Adding accelerometer and relay support, improved animations
+|| | 0.1   2015-06-18 - Danne Stayskal : Initial Prototype
+|| | 0.2   2015-06-25 - Danne Stayskal : Adding accelerometer and relay support, improved animations
+|| | 0.2.1 2015-06-25 - Danne Stayskal : Adding sync code for floods on relays
 || #
 ||
 */
@@ -47,6 +48,18 @@ int accel_y_prev = 0;
 int accel_z_prev = 0;
 int accel_scalar = 0;   // Scalar composite 2nd differential
 
+// Provision the relay interfaces
+#define RELAY_CH1_PIN 2
+#define RELAY_CH2_PIN 3
+#define RELAY_CH3_PIN 4
+#define RELAY_CH4_PIN 5
+#define RELAY_CH5_PIN 6
+#define RELAY_CH6_PIN 7
+#define RELAY_CH7_PIN 8
+#define RELAY_CH8_PIN 9
+
+int relay_mute_phase = 0;
+
 // Starting position and speed for the wave
 int block_start = 0;
 int block_speed = 1;
@@ -61,8 +74,22 @@ int block_shape[10] = { 1, 4, 10, 27, 90, 90, 27, 10, 4, 1 };
 = Initializes needed variables and drivers, called by Arduino once during initialization.
 */
 void setup() {
+
   // Initialize the LED interface
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  
+  // Initialize our relay interfaces
+  pinMode(RELAY_CH1_PIN, OUTPUT);
+  pinMode(RELAY_CH2_PIN, OUTPUT);
+  pinMode(RELAY_CH3_PIN, OUTPUT);
+  pinMode(RELAY_CH4_PIN, OUTPUT);
+
+  // Turn off each of the four floods
+  digitalWrite(RELAY_CH1_PIN, LOW);
+  digitalWrite(RELAY_CH2_PIN, LOW);
+  digitalWrite(RELAY_CH3_PIN, LOW);
+  digitalWrite(RELAY_CH4_PIN, LOW);
+
 }
 
 
@@ -74,7 +101,7 @@ void setup() {
 void loop() {
 
   // Read, normalize, and average the current audio sensor levels
-  audio_buffer = analogRead(AUDIO_PIN) - 192;
+  audio_buffer = analogRead(AUDIO_PIN);
   audio_buffer = audio_buffer / 10;
   if (audio_buffer > 0){
     if (audio_buffer > audio_level) {
@@ -82,7 +109,7 @@ void loop() {
       audio_level = audio_buffer;
     } else {
       // Softer than the last cycle. Decrement.
-      audio_level = audio_level - 5;
+      audio_level = audio_level - 10;
     }
   }
   
@@ -138,6 +165,28 @@ void loop() {
   FastLED.show();
   delay(10);
 
+
+  if (relay_mute_phase < 30000) {
+    relay_mute_phase = relay_mute_phase + 1;
+  }
+  
+  // 0 = 0 seconds (0 deg phase) = heartbeat 0
+  digitalWrite(RELAY_CH1_PIN, HIGH);
+  
+  // 9000 = 9 seconds (90 deg phase) = heartbeat 900
+  if (relay_mute_phase > 90*1.8) {
+    digitalWrite(RELAY_CH2_PIN, HIGH);
+  }
+
+  // 18000 = 18 seconds (180 deg phase) = heartbeat 1800
+  if (relay_mute_phase > 180*1.8) {
+    digitalWrite(RELAY_CH3_PIN, HIGH);
+  }
+  // 27000 = 27 seconds (270 deg phase) = heartbeat 2700
+  if (relay_mute_phase > 270*1.8) {
+    digitalWrite(RELAY_CH4_PIN, HIGH);
+  }
+  
 }
 
 

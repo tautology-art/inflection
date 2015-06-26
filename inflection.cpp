@@ -1,7 +1,7 @@
 /*
 ||
 || @file 	inflection.pde
-|| @version	0.1
+|| @version	0.2
 || @author	Danne Stayskal
 || @contact	danne@stayskal.com
 ||
@@ -12,6 +12,7 @@
 ||
 || @changelog
 || | 0.1 2015-06-18 - Danne Stayskal : Initial Prototype
+|| | 0.2 2015-06-25 - Danne Stayskal : Adding accelerometer and relay support, improved animations
 || #
 ||
 */
@@ -23,12 +24,28 @@
 #define DATA_PIN 13
 CRGB leds[NUM_LEDS];
 
-// Provision the sensor interfaces
+// Provision the audio interface
 #define AUDIO_PIN 1
-#define VIBRATION_PIN 5
 int audio_level = 0;
 int audio_buffer = 0;
-int vibration_level = 0;
+
+// Provision the accelerometer interfaces
+#define ACCEL_X_PIN 2
+#define ACCEL_Y_PIN 3
+#define ACCEL_Z_PIN 4
+int accel_x = 0;        // Acceleration due to gravity
+int accel_y = 0;
+int accel_z = 0;
+int accel_x_buffer = 0; 
+int accel_y_buffer = 0;
+int accel_z_buffer = 0;
+int accel_x_delta = 0;  // Acceleration due to hippies
+int accel_y_delta = 0;
+int accel_z_delta = 0;
+int accel_x_prev = 0;
+int accel_y_prev = 0;
+int accel_z_prev = 0;
+int accel_scalar = 0;   // Scalar composite 2nd differential
 
 // Starting position and speed for the wave
 int block_start = 0;
@@ -57,7 +74,7 @@ void setup() {
 void loop() {
 
   // Read, normalize, and average the current audio sensor levels
-  audio_buffer = analogRead(AUDIO_PIN);
+  audio_buffer = analogRead(AUDIO_PIN) - 192;
   audio_buffer = audio_buffer / 10;
   if (audio_buffer > 0){
     if (audio_buffer > audio_level) {
@@ -74,9 +91,29 @@ void loop() {
     audio_level = 255;
   }
   
-  // Read and normalize the current vibration sensor input
-  vibration_level = analogRead(VIBRATION_PIN);
-  vibration_level = vibration_level / 10;
+  // Read and normalize the current acceleration sensor input
+  // These are all calibrated to 1..100
+  accel_x_buffer = (analogRead(ACCEL_X_PIN) / 2) - 128;
+  accel_y_buffer = (analogRead(ACCEL_Y_PIN) / 2) - 128;
+  accel_z_buffer = (analogRead(ACCEL_Z_PIN) / 2) - 128;
+  accel_x = ((1.0 * accel_x) + accel_x_buffer) / 2;
+  accel_y = ((1.0 * accel_y) + accel_y_buffer) / 2;
+  accel_z = ((1.0 * accel_z) + accel_z_buffer) / 2;
+
+  // These are the second differential (rate of change of rate of change)
+  // AKA acceleration due to hippies, not acceperation due to gravity.
+  // Faking the quantized funk a touch here, since differential calculus isn't 
+  // a strength of the Arduino platform.
+  accel_x_delta = abs(accel_x - accel_x_prev);
+  accel_y_delta = abs(accel_y - accel_y_prev);
+  accel_z_delta = abs(accel_z - accel_z_prev);
+  accel_x_prev = accel_x;
+  accel_y_prev = accel_y;
+  accel_z_prev = accel_z;
+  
+  // And finally, the composite scalar form of the second differential of 
+  // measured gravitational acceleration. 1.44224 is roughly the cube root of three
+  accel_scalar = ((accel_x_delta + accel_y_delta + accel_z_delta) / 1.44224)*2;
   
   // Clear the LED array
   for (int i = 0; i < 100; i++){
@@ -94,7 +131,7 @@ void loop() {
     block_start = 0;
   }
   for(int i = 0; i<NUM_LEDS; i++){
-    leds[i].green = block_shape[(i+block_start) % block_length] * (vibration_level / 80.0);
+    leds[i].green = block_shape[(i+block_start) % block_length] * (accel_scalar / 80.0);
   }
   
   // Push this frame to the LEDs

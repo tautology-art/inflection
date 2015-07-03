@@ -19,10 +19,12 @@
 */
 
 #include "FastLED.h"
+#include "Metro.h"
 
 // Provision the LED interface
 #define NUM_LEDS 180
 #define DATA_PIN 13
+#define CLOCK_PIN 12
 CRGB leds[NUM_LEDS];
 
 // Provision the audio interface
@@ -53,10 +55,6 @@ int accel_scalar = 0;   // Scalar composite 2nd differential
 #define RELAY_CH2_PIN 3
 #define RELAY_CH3_PIN 4
 #define RELAY_CH4_PIN 5
-#define RELAY_CH5_PIN 6
-#define RELAY_CH6_PIN 7
-#define RELAY_CH7_PIN 8
-#define RELAY_CH8_PIN 9
 
 int relay_mute_phase = 0;
 
@@ -69,14 +67,13 @@ int block_length = 10;
 int block_shape[10] = { 1, 4, 10, 27, 90, 90, 27, 10, 4, 1 };
 
 /* 
-==========================================
-= setup()
-= Initializes needed variables and drivers, called by Arduino once during initialization.
+|| setup()
+|| Initializes needed variables and drivers, called by Arduino once during initialization.
 */
 void setup() {
 
   // Initialize the LED interface
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  FastLED.addLeds<WS2801, DATA_PIN, CLOCK_PIN>(leds, NUM_LEDS);
   
   // Initialize our relay interfaces
   pinMode(RELAY_CH1_PIN, OUTPUT);
@@ -94,9 +91,8 @@ void setup() {
 
 
 /* 
-==========================================
-= loop()
-= The main runtime heartbeat, called by Arduino once whenever the previous run of loop() completes.
+|| loop()
+|| The main runtime heartbeat, called by Arduino once whenever the previous run of loop() completes.
 */
 void loop() {
 
@@ -165,28 +161,29 @@ void loop() {
   FastLED.show();
   delay(10);
 
+  // Stagger the relays on one at a time every 3 seconds
+  staggerRelayOn();
+  
+}
 
-  if (relay_mute_phase < 30000) {
-    relay_mute_phase = relay_mute_phase + 1;
-  }
-  
-  // 0 = 0 seconds (0 deg phase) = heartbeat 0
-  digitalWrite(RELAY_CH1_PIN, HIGH);
-  
-  // 9000 = 9 seconds (90 deg phase) = heartbeat 900
-  if (relay_mute_phase > 90*1.8) {
-    digitalWrite(RELAY_CH2_PIN, HIGH);
-  }
 
-  // 18000 = 18 seconds (180 deg phase) = heartbeat 1800
-  if (relay_mute_phase > 180*1.8) {
-    digitalWrite(RELAY_CH3_PIN, HIGH);
+/* 
+|| staggerRelayOn()
+|| Turns on the next successive relay channel every 3 seconds.
+*/
+void staggerRelayOn() {
+  static Metro onInterval(3000UL); // turn the next relay on every 3s.
+  const byte relayPins[]={RELAY_CH1_PIN, RELAY_CH2_PIN, RELAY_CH3_PIN, RELAY_CH4_PIN };
+  const byte nPins = sizeof(relayPins);
+  static byte pin = 0; // start
+
+  if( pin >= nPins ) return; // done with turning on.
+
+  if( onInterval.check() ) { // time to turn the next pin on.
+    pinMode(relayPins[pin], OUTPUT); // current source
+    digitalWrite(relayPins[pin], HIGH); // on
+    pin++;
   }
-  // 27000 = 27 seconds (270 deg phase) = heartbeat 2700
-  if (relay_mute_phase > 270*1.8) {
-    digitalWrite(RELAY_CH4_PIN, HIGH);
-  }
-  
 }
 
 
